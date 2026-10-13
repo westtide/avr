@@ -35,7 +35,7 @@ void Reach::evaluate_abstract_relation(int mode, Inst*e, EVAL& s)
 		return;
 	}
 	e->set_visit();
-	assert(e->get_size() == 1);
+	assert(e->is_boolean());
 
 	e->coi.set_coi_key();
 #ifndef PERFORMANCE_NODRAW
@@ -52,7 +52,7 @@ void Reach::evaluate_abstract_relation(int mode, Inst*e, EVAL& s)
 	NumInst *num_temp = NumInst::as(e);
 	if(num_temp)
 	{
-		if(e->get_size() == 1)
+		if(e->is_boolean())
 		{
 			if(num_temp->get_num() == 0)
 				e->set_bval(0);
@@ -63,7 +63,7 @@ void Reach::evaluate_abstract_relation(int mode, Inst*e, EVAL& s)
 
 	int eVal = e->get_bval();
 
-	if((e->get_size() == 1) && (!(eVal == 1 || eVal == 0)))
+	if((e->is_boolean()) && (!(eVal == 1 || eVal == 0)))
 	{
 		cout << "e->cex_mpz: " << e->get_size() << "'d";
 		cout << "e->val: " << eVal << endl;
@@ -225,7 +225,7 @@ void Reach::evaluate_abstract_relation(int mode, Inst*e, EVAL& s)
 		InstToInstM tmpMap;
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_abstract_relation(mode, *it, s);
 			}
@@ -261,7 +261,7 @@ void Reach::evaluate_abstract_relation(int mode, Inst*e, EVAL& s)
         }
       }
 
-      if (lhs->get_size() != 1)
+      if (!lhs->is_boolean())
       {
         isPred = add_local_eq(lhs, rhs);
       }
@@ -710,7 +710,7 @@ void Reach::evaluate_abstract_term(int mode, Inst*e, EVAL& s)
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_abstract_relation(mode, *it, s);
 			}
@@ -756,7 +756,7 @@ void Reach::evaluate_substitute_relation(int mode, Inst*e, ABSTRACT_REACH_VIOL& 
 		return;
 	}
 	e->set_visit();
-	assert(e->get_size() == 1);
+	assert(e->is_boolean());
 
 	// TODO temporary fix for the next state function, "reg_reset$next = 1"
 	// With wn_simplify_const_pred enabled, "reg_reset$next = 1" is simplified as "reg_reset$next"
@@ -767,7 +767,7 @@ void Reach::evaluate_substitute_relation(int mode, Inst*e, ABSTRACT_REACH_VIOL& 
 	NumInst *num_temp = NumInst::as(e);
 	if(num_temp)
 	{
-		if(e->get_size() == 1)
+		if(e->is_boolean())
 		{
 			if(num_temp->get_num() == 0)
 				e->set_bval(0);
@@ -778,7 +778,7 @@ void Reach::evaluate_substitute_relation(int mode, Inst*e, ABSTRACT_REACH_VIOL& 
 
 	int eVal = e->get_bval();
 
-	if((e->get_size() == 1) && (!(eVal == 1 || eVal == 0)))
+	if((e->is_boolean()) && (!(eVal == 1 || eVal == 0)))
 	{
 		cout << "e->cex_mpz: " << e->get_size() << "'d";
 		cout << "e->val: " << eVal << endl;
@@ -895,7 +895,7 @@ void Reach::evaluate_substitute_relation(int mode, Inst*e, ABSTRACT_REACH_VIOL& 
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_substitute_relation(mode, *it, bins, nextMap, relevantSet);
 			}
@@ -1227,7 +1227,7 @@ void Reach::evaluate_substitute_term(int mode, Inst*e, ABSTRACT_REACH_VIOL& bins
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_substitute_relation(mode, *it, bins, nextMap, relevantSet);
 			}
@@ -1297,7 +1297,7 @@ void Reach::evaluate_path_relation(int mode, Inst*e, ABSTRACT_REACH_VIOL& bins, 
 		return;
 	}
 	e->set_visit();
-	assert(e->get_size() == 1);
+	assert(e->is_boolean());
 
 	// TODO temporary fix for the next state function, "reg_reset$next = 1"
 	// With wn_simplify_const_pred enabled, "reg_reset$next = 1" is simplified as "reg_reset$next"
@@ -1308,7 +1308,7 @@ void Reach::evaluate_path_relation(int mode, Inst*e, ABSTRACT_REACH_VIOL& bins, 
 	NumInst *num_temp = NumInst::as(e);
 	if(num_temp)
 	{
-		if(e->get_size() == 1)
+		if(e->is_boolean())
 		{
 			if(num_temp->get_num() == 0)
 				e->set_bval(0);
@@ -1319,7 +1319,7 @@ void Reach::evaluate_path_relation(int mode, Inst*e, ABSTRACT_REACH_VIOL& bins, 
 
 	int eVal = e->get_bval();
 
-	if((e->get_size() == 1) && (!(eVal == 1 || eVal == 0)))
+	if((e->is_boolean()) && (!(eVal == 1 || eVal == 0)))
 	{
 		cout << "e->cex_mpz: " << e->get_size() << "'d";
 		cout << "e->val: " << eVal << endl;
@@ -1450,7 +1450,7 @@ void Reach::evaluate_path_relation(int mode, Inst*e, ABSTRACT_REACH_VIOL& bins, 
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_path_relation(mode, *it, bins, nextMap);
 			}
@@ -1796,7 +1796,7 @@ void Reach::evaluate_path_term(int mode, Inst*e, ABSTRACT_REACH_VIOL& bins, Inst
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_path_relation(mode, *it, bins, nextMap);
 			}
@@ -1862,7 +1862,7 @@ void Reach::evaluate_abstract_destination(int mode, Inst*e, InstL& bin_pre, Inst
 		return;
 	}
 	e->set_visit();
-	assert(e->get_size() == 1);
+	assert(e->is_boolean());
 
 	// TODO temporary fix for the next state function, "reg_reset$next = 1"
 	// With wn_simplify_const_pred enabled, "reg_reset$next = 1" is simplified as "reg_reset$next"
@@ -1873,7 +1873,7 @@ void Reach::evaluate_abstract_destination(int mode, Inst*e, InstL& bin_pre, Inst
 	NumInst *num_temp = NumInst::as(e);
 	if(num_temp)
 	{
-		if(e->get_size() == 1)
+		if(e->is_boolean())
 		{
 			if(num_temp->get_num() == 0)
 				e->set_bval(0);
@@ -1884,7 +1884,7 @@ void Reach::evaluate_abstract_destination(int mode, Inst*e, InstL& bin_pre, Inst
 
 	int eVal = e->get_bval();
 
-	if((e->get_size() == 1) && (!(eVal == 1 || eVal == 0)))
+	if((e->is_boolean()) && (!(eVal == 1 || eVal == 0)))
 	{
 		cout << "e->cex_mpz: " << e->get_size() << "'d";
 		cout << "e->val: " << eVal << endl;
@@ -2017,7 +2017,7 @@ void Reach::evaluate_abstract_destination(int mode, Inst*e, InstL& bin_pre, Inst
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_abstract_destination(mode, *it, bin_pre, nextMap);
 				if ((*it)->acex_coi->acex_fc)
@@ -2119,7 +2119,7 @@ void Reach::evaluate_abstract_destination(int mode, Inst*e, InstL& bin_pre, Inst
 		bool all_ch_size_one = true;
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_abstract_destination(mode, *it, bin_pre, nextMap);
 				if ((*it)->acex_coi->acex_fc)
@@ -2514,7 +2514,7 @@ void Reach::evaluate_abstract_destination_term(int mode, Inst*e, InstL& bin_pre,
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_abstract_destination(mode, *it, bin_pre, nextMap);
 			}
@@ -2658,7 +2658,7 @@ void Reach::evaluate_simulation_relation(int mode, Inst*e, SIMULATION_POSITION& 
 		return;
 	}
 	e->set_visit();
-	assert(e->get_size() == 1);
+	assert(e->is_boolean());
 
 	AVR_LOG(14, 9, "[SimEval]: " << *e << " (" << e->get_bval() << ")" << endl);
 
@@ -2671,7 +2671,7 @@ void Reach::evaluate_simulation_relation(int mode, Inst*e, SIMULATION_POSITION& 
 	NumInst *num_temp = NumInst::as(e);
 	if(num_temp)
 	{
-		if(e->get_size() == 1)
+		if(e->is_boolean())
 		{
 			if(num_temp->get_num() == 0)
 				e->set_bval(0);
@@ -2682,7 +2682,7 @@ void Reach::evaluate_simulation_relation(int mode, Inst*e, SIMULATION_POSITION& 
 
 	int eVal = e->get_bval();
 
-	if((e->get_size() == 1) && (!(eVal == 1 || eVal == 0)))
+	if((e->is_boolean()) && (!(eVal == 1 || eVal == 0)))
 	{
 		cout << "e->cex_mpz: " << e->get_size() << "'d";
 		cout << "e->val: " << eVal << endl;
@@ -2847,7 +2847,7 @@ void Reach::evaluate_simulation_relation(int mode, Inst*e, SIMULATION_POSITION& 
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_simulation_relation(mode, *it, pre, next, stuck);
 			}
@@ -3099,7 +3099,7 @@ void Reach::evaluate_simulation_relation(int mode, Inst*e, SIMULATION_POSITION& 
 //							if (val != 0)
 //							{
 //								string sval = Solver::val_to_str(val, num->get_size());
-//								for (int i = 0; i < pow(2, width); i++) {
+//								for (long i = 0; i < pow(2, width); i++) {
 //									string segment = sval.substr(0, size);
 //									sval.erase(0, size);
 //									Inst* valInst = NumInst::create(segment, size, 2);
@@ -3149,7 +3149,7 @@ void Reach::evaluate_simulation_relation(int mode, Inst*e, SIMULATION_POSITION& 
 					SigInst* sig = SigInst::as(tmp);
 					if (sig &&
 							Inst::_s_reg.find(sig) != Inst::_s_reg.end()) {
-						assert(sig->get_size() == 1);
+						assert(sig->is_boolean());
 						lhs = sig;
 						rhs = NumInst::create(1, 1, SORT());
 						done = true;
@@ -3501,7 +3501,7 @@ void Reach::evaluate_simulation_term(int mode, Inst*e, SIMULATION_POSITION& pre,
 		bool need_new = false;
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it) {
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_simulation_relation(mode, *it, pre, next, stuck);
 			}
@@ -3606,7 +3606,7 @@ Inst* Reach::evaluate_generalize_relation(Inst*e, InstL& viol, bool init_visit)
 		return e->acex_coi;
 	}
 	e->set_visit();
-	assert(e->get_size() == 1);
+	assert(e->is_boolean());
 
 	// TODO temporary fix for the next state function, "reg_reset$next = 1"
 	// With wn_simplify_const_pred enabled, "reg_reset$next = 1" is simplified as "reg_reset$next"
@@ -3617,7 +3617,7 @@ Inst* Reach::evaluate_generalize_relation(Inst*e, InstL& viol, bool init_visit)
 	NumInst *num_temp = NumInst::as(e);
 	if(num_temp)
 	{
-		if(e->get_size() == 1)
+		if(e->is_boolean())
 		{
 			if(num_temp->get_num() == 0)
 				e->set_bval(0);
@@ -3802,7 +3802,7 @@ Inst* Reach::evaluate_generalize_relation(Inst*e, InstL& viol, bool init_visit)
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_generalize_relation(*it, viol);
 			}
@@ -3931,7 +3931,7 @@ void Reach::evaluate_generalize_term(Inst*e, InstL& viol)
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_generalize_relation(*it, viol);
 			}
@@ -3980,7 +3980,7 @@ void Reach::evaluate_relation(int mode, Inst*e)
 		return;
 	}
 	e->set_visit();
-	assert(e->get_size() == 1);
+	assert(e->is_boolean());
 
 	// TODO temporary fix for the next state function, "reg_reset$next = 1"
 	// With wn_simplify_const_pred enabled, "reg_reset$next = 1" is simplified as "reg_reset$next"
@@ -3991,7 +3991,7 @@ void Reach::evaluate_relation(int mode, Inst*e)
 	NumInst *num_temp = NumInst::as(e);
 	if(num_temp)
 	{
-		if(e->get_size() == 1)
+		if(e->is_boolean())
 		{
 			if(num_temp->get_num() == 0)
 				e->set_bval(0);
@@ -4002,7 +4002,7 @@ void Reach::evaluate_relation(int mode, Inst*e)
 
 	int eVal = e->get_bval();
 
-	if((e->get_size() == 1) && (!(eVal == 1 || eVal == 0)))
+	if((e->is_boolean()) && (!(eVal == 1 || eVal == 0)))
 	{
 		cout << "e->cex_mpz: " << e->get_size() << "'d";
 		cout << "e->val: " << eVal << endl;
@@ -4082,7 +4082,7 @@ void Reach::evaluate_relation(int mode, Inst*e)
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_relation(mode, *it);
 			}
@@ -4353,7 +4353,7 @@ void Reach::evaluate_term(int mode, Inst*e)
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				evaluate_relation(mode, *it);
 			}

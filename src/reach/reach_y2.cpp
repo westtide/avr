@@ -18,6 +18,8 @@
 #include <csignal>
 #include <pthread.h>
 #include <functional>
+#include <limits>
+#include <stdexcept>
 
 using namespace std;
 
@@ -1295,7 +1297,7 @@ y2_type y2_API::create_int_sort(pair< unsigned, SORT > sz, bool dom_bv, bool ran
 	if (it == m_sz_to_ut.end())
 	{
 		if (sz.second.type == bvtype || sz.second.type == inttype) {
-			if (sz.first == 1)
+			if (sz.second.type == bvtype && sz.first == 1)
 				ut = yices_bool_type();
 			else {
 #ifdef Y2_SCALAR_BUCKETS
@@ -1483,6 +1485,7 @@ void y2_API::add_yices_func(y2_expr& var, string op, bool pred, y2_expr_list& ch
 					target = create_int_sort(make_pair(e->get_size(), e->get_sort()));
 				}
 				else if (m_mapper->fetch_var(e) == TheoryMapper::BOOL_VAR) {
+					assert(e->is_boolean());
 					target = yices_bool_type();
 				}
 				else {
@@ -1749,6 +1752,7 @@ void y2_API::add_variable(y2_expr& lhs, Inst*e) {
 	if (lhs == Y2_INVALID_EXPR) {
 		string name = get_y2_name(e);
 		if (m_mapper->fetch_var(e) == TheoryMapper::BOOL_VAR) {
+			assert(e->is_boolean());
 			lhs = create_bool_var(name);
 		} else {
 			if (m_mapper->fetch_logic() == TheoryMapper::QF_UFBV && e->get_sort_type() == arraytype) {
@@ -1788,18 +1792,14 @@ void y2_API::add_gate_constraint(y2_expr& lhs, y2_expr_ptr rhs, std::string comm
 		assert(0);
 	}
 
-	if (checkType) {
-		if (e->get_sort_type() == bvtype) {
-			if (e->get_size() == 1) {
-	      if (yices_term_is_bitvector(rhs))
-	        rhs = yices_eq(rhs, m_v1);
-			}
-		}
+	if (checkType && e->is_boolean()) {
+		if (yices_term_is_bitvector(rhs))
+			rhs = yices_eq(rhs, m_v1);
 	}
 
 	bool directConnect = !asConstraint && !allow_flatten;
 	if (directConnect) {
-		if (e->get_size() == 1) {
+		if (e->is_boolean()) {
 			switch (e->get_type()) {
 			case Op:
 			case Ex:
@@ -5367,7 +5367,7 @@ bool y2_API::get_relation(Inst* lhs, Inst* rhs, bool expected)
 
 bool y2_API::get_assignment(Inst* e, int& val)
 {
-	assert(e->get_sort_type() == bvtype || e->get_sort_type() == arraytype);
+	assert(e->is_boolean());
 	assert(m_model != NULL);
 
 	y2_expr decl = e->y2_node.solv_var(get_vIdx());
@@ -5378,7 +5378,7 @@ bool y2_API::get_assignment(Inst* e, int& val)
 	}
 	assert(decl != Y2_INVALID_EXPR);
 
-	assert(e->get_size() == 1);
+	assert(yices_term_is_bool(decl));
 
 	y2_val value;
   int status = yices_get_value(m_model, decl, &value);
@@ -5485,7 +5485,7 @@ bool y2_API::get_assignment(Inst* e, int& val)
 		Inst* rhs = tve->get_children()->back();
 
 		bool eq;
-		if (lhs->get_size() == 1)
+		if (lhs->is_boolean())
 		{
 			int val_l = lhs->get_bval();
 			int val_r = rhs->get_bval();
@@ -5529,7 +5529,7 @@ bool y2_API::get_assignment(Inst* e, int& val)
 			y2_expr_ptr decl_l = lhs->y2_node.solv_var(get_vIdx());
 			y2_expr_ptr decl_r = rhs->y2_node.solv_var(get_vIdx());
 
-			if (lhs->get_size() == 1) {
+			if (lhs->is_boolean()) {
 				cout << "lhs  : " << *lhs << " " << " (aka " << print_term(decl_l) << ") " << lhs->get_bval() << endl;
 				cout << "rhs  : " << *rhs << " " << " (aka " << print_term(decl_r) << ") " << rhs->get_bval() << endl;
 			}
@@ -5555,7 +5555,7 @@ bool y2_API::get_assignment(Inst* e, int& val)
 		if (op && op->get_op() == OpInst::LogNot)
 		{
 			tve = e->get_children()->front();
-			assert(tve->get_size() == 1);
+			assert(tve->is_boolean());
 
 			y2_expr decl_t = tve->y2_node.solv_var(get_vIdx());
 			assert(decl_t != Y2_INVALID_EXPR);
@@ -5695,15 +5695,24 @@ void y2_API::get_value_arr(bool abstract, SORT& sort, y2_val* decl, string& sval
 	assert(sort.type == arraytype);
 	assert(sort.args.size() == 2);
 
+	SORT& d = sort.args.front();
+	SORT& r = sort.args.back();
+	unsigned elements = 0;
+	if (!abstract && d.type == bvtype && r.type == bvtype) {
+		if (d.sz == 0 || r.sz == 0 || d.sz >= numeric_limits<unsigned>::digits)
+			throw runtime_error("AVR backend unsupported: dense array model payload width");
+		elements = 1u << d.sz;
+		const unsigned maxPayload = static_cast<unsigned>(numeric_limits<int>::max());
+		if (r.sz > maxPayload / elements)
+			throw runtime_error("AVR backend unsupported: dense array model payload exceeds supported width");
+	}
+
 	y2_val def;
   y2_val_vector m;
   yices_init_yval_vector(&m);
 
   int result = yices_val_expand_function(m_model, decl, &def, &m);
   assert(result == 0);
-
-  SORT& d = sort.args.front();
-  SORT& r = sort.args.back();
 
 	string defstr;
 	get_value(abstract, r, def, defstr);
@@ -5732,7 +5741,8 @@ void y2_API::get_value_arr(bool abstract, SORT& sort, y2_val* decl, string& sval
   //  if (false && !abstract && d.type == bvtype) {
 	if (!abstract && d.type == bvtype && r.type == bvtype) {
     sval = "";
-    for (int i = pow(2, d.sz) - 1; i >= 0; i--) {
+    for (unsigned remaining = elements; remaining > 0; --remaining) {
+      unsigned i = remaining - 1;
     	map < string, string >::iterator mit = vMap.find(val_to_str(i, d.sz, false));
     	if (mit != vMap.end())
     		sval += (*mit).second;
@@ -5750,7 +5760,7 @@ void y2_API::get_value_arr(bool abstract, SORT& sort, y2_val* decl, string& sval
 bool y2_API::get_assignment(Inst* e, mpz_class* val)
 {
   assert(m_model != NULL);
-  assert(e->get_size() != 1);
+  assert(!e->is_boolean());
 
   y2_expr decl = e->y2_node.solv_var(get_vIdx());
 	if (decl == Y2_INVALID_EXPR) {
@@ -6378,6 +6388,7 @@ void y2_API::inst2yices(Inst*e, bool bvAllConstraints)
 					yvar = c;
 			}
 			else if (m_mapper->fetch_var(e) == TheoryMapper::BOOL_VAR) {
+				assert(e->is_boolean());
 				yvar = ((*(num->get_mpz()) == 0) ? m_b0 : m_b1);
 
 				//			add_constraint(yices_eq((*(num->get_mpz()) == 0) ? m_b0 : m_b1, yvar), "num to boolean conversion", e);
@@ -6452,10 +6463,10 @@ void y2_API::inst2yices(Inst*e, bool bvAllConstraints)
 
 			OpInst::OpType o = op->get_op();
 
-			if (o == OpInst::BitWiseXor && op->get_size() == 1 && (m_mapper->fetch_op(e) != TheoryMapper::BV_OP)) {
+			if (o == OpInst::BitWiseXor && op->is_boolean() && (m_mapper->fetch_op(e) != TheoryMapper::BV_OP)) {
 				o = OpInst::LogXor;
 			}
-			if (o == OpInst::BitWiseXNor && op->get_size() == 1 && (m_mapper->fetch_op(e) != TheoryMapper::BV_OP)) {
+			if (o == OpInst::BitWiseXNor && op->is_boolean() && (m_mapper->fetch_op(e) != TheoryMapper::BV_OP)) {
 				o = OpInst::LogXNor;
 			}
 
@@ -6625,16 +6636,24 @@ void y2_API::inst2yices(Inst*e, bool bvAllConstraints)
 								SORT* r = e->get_sort_range();
 								assert(d->type == bvtype);
 								assert(r->type == bvtype);
-								int width = d->sz;
-								int size = r->sz;
+								unsigned width = d->sz;
+								unsigned size = r->sz;
+								if (width == 0 || size == 0 || width >= numeric_limits<unsigned>::digits)
+									throw runtime_error("AVR backend unsupported: dense array initializer domain width");
+								const unsigned elements = 1u << width;
+								const unsigned maxPayload = static_cast<unsigned>(numeric_limits<int>::max());
+								if (size > maxPayload / elements)
+									throw runtime_error("AVR backend unsupported: dense array initializer exceeds supported width");
 
 								Inst* init_val = e->get_children()->back();
 								assert(init_val->get_type() == Num);
 								string value = NumInst::as(init_val)->get_mpz()->get_str(2);
-								while (value.length() < e->get_size())
-									value = "0" + value;
-								int maxaddress = pow(2, width) - 1;
-								for (int i = 0; i <= maxaddress; i++) {
+								// Keep the declared payload width after mpz drops leading zeros.
+								// An element-width initializer broadcasts; a full-array payload
+								// must retain every element, including zero-valued high addresses.
+								if (value.length() < init_val->get_size())
+									value.insert(0, init_val->get_size() - value.length(), '0');
+								for (unsigned i = 0; i < elements; ++i) {
 									string v;
 									if (value.size() <= size) {
 										v = value;
@@ -6643,7 +6662,7 @@ void y2_API::inst2yices(Inst*e, bool bvAllConstraints)
 									} else {
 										v = "0";
 									}
-									Inst* address = NumInst::create(maxaddress - i, width, SORT());
+									Inst* address = NumInst::create(elements - 1 - i, width, SORT());
 									Inst* data = NumInst::create(v, size, 2, SORT());
 									y2_expr_ptr a = create_y2_number(NumInst::as(address));
 									y2_expr_ptr b = create_y2_number(NumInst::as(data));
@@ -7719,7 +7738,7 @@ void y2_API::inst2yices(Inst*e, bool bvAllConstraints)
 						cout << OpInst::op2str(o) << endl;
 						assert(0);
 					}
-					add_yices_func(yvar, opstr, e->get_size() == 1, y_ch, s_sz, e);
+					add_yices_func(yvar, opstr, e->is_boolean(), y_ch, s_sz, e);
 
 					//#ifdef INTERPRET_EX_CC
 					//				if (m_allow_ex_cc)
@@ -7778,7 +7797,7 @@ void y2_API::inst2yices(Inst*e, bool bvAllConstraints)
 				s_sz.push_back(ex->get_hi());
 				s_sz.push_back(ex->get_lo());
 				s_sz.push_back((*(ch->begin()))->get_size());
-				add_yices_func(yvar, "Extract", e->get_size() == 1, y_ch, s_sz, e);
+				add_yices_func(yvar, "Extract", e->is_boolean(), y_ch, s_sz, e);
 
 				//#ifdef INTERPRET_EX_CC
 				//			if (m_allow_ex_cc)
@@ -7806,7 +7825,7 @@ void y2_API::inst2yices(Inst*e, bool bvAllConstraints)
 			//    cout<<"uf->get_name = "<<uf->get_name()<<endl;
 			//    cout<<"clean: "<<clean_str(uf->get_name())<<endl;
 
-			add_yices_func(yvar, clean_str(uf->get_name()), e->get_size() == 1, y_ch, s_sz, e);
+			add_yices_func(yvar, clean_str(uf->get_name()), e->is_boolean(), y_ch, s_sz, e);
 
 			/*    if(m_mapper->fetch_op(e)==TheoryMapper::BV_OP){
 		 yices_type domains[ch->size()];
@@ -7841,7 +7860,7 @@ void y2_API::inst2yices(Inst*e, bool bvAllConstraints)
 				{
 					NumInst* num = NumInst::as(e);
 					if (num) {
-						if (e->get_size() != 1) {
+						if (e->get_sort_type() == bvtype && !e->is_boolean()) {
 
 							OpInst* opS = OpInst::as(simplified);
 							assert(opS);
@@ -7868,7 +7887,7 @@ void y2_API::inst2yices(Inst*e, bool bvAllConstraints)
 				{
 					SigInst* sig = SigInst::as(e);
 					if (sig) {
-						if (e->get_size() != 1) {
+						if (e->get_sort_type() == bvtype && !e->is_boolean()) {
 
 							OpInst* opS = OpInst::as(simplified);
 							assert(opS);

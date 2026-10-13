@@ -10,6 +10,8 @@
 
 #include "reach_core.h"
 #include <execinfo.h>	// to dump call stacks (backtrace, backtrace_symbols)
+#include <limits>
+#include <stdexcept>
 
 namespace reach
 {
@@ -401,17 +403,31 @@ Inst* Reach::replace_constant_with_value(Inst *top) {
   		Inst* num;
     	if (c->get_sort_type() == arraytype) {
     		if (c->get_sort_domain()->type == bvtype && c->get_sort_range()->type == bvtype) {
-    				int width = c->get_sort_domain()->sz;
-    				int size = c->get_size();
+					unsigned width = c->get_sort_domain()->sz;
+					unsigned size = c->get_size();
     				assert(size == c->get_sort_range()->sz);
 
-    				string value = top->get_ival()->get_str(2);
-					while (value.length() < (c->get_size() * 2))
-						value = "0" + value;
+					// Concrete array models pack every element in domain order.
+					// Keep the complete payload width even when mpz drops leading
+					// zeros; an element-width payload means a broadcast initializer.
+					const unsigned maxPayload = static_cast<unsigned>(numeric_limits<int>::max());
+					if (width == 0 || size == 0 || width >= numeric_limits<unsigned>::digits)
+						throw runtime_error("AVR backend unsupported: dense array model payload width");
+					const unsigned elements = 1u << width;
+					if (size > maxPayload / elements)
+						throw runtime_error("AVR backend unsupported: dense array model payload exceeds supported width");
+					const unsigned payloadWidth = elements * size;
+					mpz_class* modelValue = top->get_ival();
+					if (modelValue == INVALID_SMPZ || *modelValue < 0)
+						throw runtime_error("AVR backend error: missing concrete dense array model value");
+					string value = modelValue->get_str(2);
+					if (value.length() > payloadWidth)
+						throw runtime_error("AVR backend error: dense array model value exceeds its full domain");
+					value.insert(0, payloadWidth - value.length(), '0');
 
 					Inst* wI = NumInst::create(width, 32, SORT());
 					Inst* sI = NumInst::create(size, 32, SORT());
-					Inst* dI = NumInst::create(value, value.length(), 2, SORT());
+					Inst* dI = NumInst::create(value, payloadWidth, 2, SORT());
 					num = OpInst::create(OpInst::ArrayConst, wI, sI, dI);
     		}
     		else {
@@ -421,7 +437,7 @@ Inst* Reach::replace_constant_with_value(Inst *top) {
     		}
     	}
     	else {
-        if (top->get_size() == 1)
+        if (top->is_boolean())
           num = NumInst::create(top->get_bval(), 1, SORT());
         else
           num = NumInst::create(*top->get_ival(), top->get_size(), top->get_sort());
@@ -446,6 +462,14 @@ Inst* Reach::replace_constant_with_parent(Inst *top, InstToInstM& valMap, bool i
 	return top->acex_coi;
   }
   top->set_visit3();
+
+  OpInst* literal = OpInst::as(top);
+  if (literal && literal->get_op() == OpInst::ArrayConst) {
+    // Width descriptors and the array payload are literal NumInst values,
+    // not scalar model values eligible for replacement with parent signals.
+    top->acex_coi = top;
+    return top;
+  }
 
   Inst* topRet = top;
 
@@ -519,6 +543,13 @@ Inst* Reach::replace_constant_with_all_parent(Inst *top, int& idx, list< pair< I
 	return top->acex_coi;
   }
   top->set_visit3();
+
+  OpInst* literal = OpInst::as(top);
+  if (literal && literal->get_op() == OpInst::ArrayConst) {
+    // Keep the literal array descriptor intact during parent generalization.
+    top->acex_coi = top;
+    return top;
+  }
 
   Inst* topRet = top;
 
@@ -1486,7 +1517,7 @@ Inst* Reach::replace_with_num_excc(Inst *top, map< int, map< mpz_class, Inst* > 
   if (!topRet->childrenInfo[NEXT] && topRet->childrenInfo[SIG]) {
 //  if (topRet->childrenInfo[SIG]) {
     int sz = topRet->get_size();
-    if (sz == 1) {
+    if (topRet->is_boolean()) {
       int bval = topRet->get_bval();
       if (bval != INVALID_SVAL)
         topRet = NumInst::create(bval, 1, SORT());
@@ -1495,7 +1526,7 @@ Inst* Reach::replace_with_num_excc(Inst *top, map< int, map< mpz_class, Inst* > 
       mpz_class* ival = topRet->get_ival();
       if (ival != INVALID_SMPZ) {
         map< mpz_class, Inst* >::iterator mit = numMap[sz].find(*ival);
-        if (mit != numMap[sz].end())
+        if (mit != numMap[sz].end() && (*mit).second->get_sort() == topRet->get_sort())
           topRet = (*mit).second;
       }
     }
@@ -1553,7 +1584,7 @@ Inst* Reach::simplify_excc(Inst *top, map< int, map< mpz_class, Inst* > >& numMa
   if (!topRet->childrenInfo[NEXT] && topRet->childrenInfo[SIG]) {
 //  if (topRet->childrenInfo[SIG]) {
     int sz = topRet->get_size();
-    if (sz == 1) {
+    if (topRet->is_boolean()) {
       int bval = topRet->get_bval();
       if (bval != INVALID_SVAL)
         topRet = NumInst::create(bval, 1, SORT());
@@ -1562,7 +1593,7 @@ Inst* Reach::simplify_excc(Inst *top, map< int, map< mpz_class, Inst* > >& numMa
       mpz_class* ival = topRet->get_ival();
       if (ival != INVALID_SMPZ) {
         map< mpz_class, Inst* >::iterator mit = numMap[sz].find(*ival);
-        if (mit != numMap[sz].end())
+        if (mit != numMap[sz].end() && (*mit).second->get_sort() == topRet->get_sort())
           topRet = (*mit).second;
       }
     }
@@ -1862,7 +1893,7 @@ bool Reach::find_from_minset(Inst *top, InstS& relSig, InstS& relConst, set< str
 		else
 		{
 			NumInst* num = NumInst::as(top);
-			if (num && num->get_size() > 1)
+			if (num && !num->is_boolean())
 			{
 			  if (_s_constants.find(num) == _s_constants.end()) {
           if (relConst.find(num) == relConst.end()) {
@@ -4096,6 +4127,9 @@ void Reach::all_pre2next(InstL& viol)
 }
 
 Inst *Reach::replace_inputs_with_val(Inst *e, bool init_visit) {
+	// This optimization instantiates scalar inputs with NumInst values.
+	// Keep array inputs and their existing constraints: an array value is not
+	// a scalar number, even when its element width is one.
 	Inst *res = e;
 	if (init_visit) {
 		Inst::init_visit2();
@@ -4123,7 +4157,9 @@ Inst *Reach::replace_inputs_with_val(Inst *e, bool init_visit) {
 				SigInst* sig = SigInst::as(*it);
 				if (Inst::_m_next_input_pre.find(sig) != Inst::_m_next_input_pre.end())
 				{
-					if (sig->get_size() == 1)
+					if (sig->get_sort_type() == arraytype)
+						tve = sig;
+					else if (sig->is_boolean())
 						tve = NumInst::create(sig->get_bval(), 1, SORT());
 					else
 						tve = NumInst::create(*sig->get_ival(), sig->get_size(), sig->get_sort());
@@ -4133,7 +4169,9 @@ Inst *Reach::replace_inputs_with_val(Inst *e, bool init_visit) {
 				{
 					if (Inst::_s_inp.find(sig) != Inst::_s_inp.end())
 					{
-						if (sig->get_size() == 1)
+						if (sig->get_sort_type() == arraytype)
+							tve = sig;
+						else if (sig->is_boolean())
 							tve = NumInst::create(sig->get_bval(), 1, SORT());
 						else
 							tve = NumInst::create(*sig->get_ival(), sig->get_size(), sig->get_sort());
@@ -4166,7 +4204,9 @@ Inst *Reach::replace_inputs_with_val(Inst *e, bool init_visit) {
 		{
 			if (Inst::_m_next_input_pre.find(sig) != Inst::_m_next_input_pre.end())
 			{
-				if (sig->get_size() == 1)
+				if (sig->get_sort_type() == arraytype)
+					res = sig;
+				else if (sig->is_boolean())
 					res = NumInst::create(sig->get_bval(), 1, SORT());
 				else
 					res = NumInst::create(*sig->get_ival(), sig->get_size(), sig->get_sort());
@@ -4175,7 +4215,9 @@ Inst *Reach::replace_inputs_with_val(Inst *e, bool init_visit) {
 			{
 				if (Inst::_s_inp.find(sig) != Inst::_s_inp.end())
 				{
-					if (sig->get_size() == 1)
+					if (sig->get_sort_type() == arraytype)
+						res = sig;
+					else if (sig->is_boolean())
 						res = NumInst::create(sig->get_bval(), 1, SORT());
 					else
 						res = NumInst::create(*sig->get_ival(), sig->get_size(), sig->get_sort());
@@ -4423,7 +4465,7 @@ Inst* Reach::try_intermediate_form(Inst* e)
 
 int Reach::find_value (Inst* rel, Inst* lhs, Inst* rhs)
 {
-	assert(rel->get_size() == 1);
+	assert(rel->is_boolean());
 
 	OpInst* op = OpInst::as(rel);
 	if (op && op->get_euf_func_name() == "0")
@@ -4485,7 +4527,7 @@ bool Reach::is_redundant (Inst* rel)
 {
 	if (rel)
 	{
-		assert(rel->get_size() == 1);
+		assert(rel->is_boolean());
 
 		OpInst* op = OpInst::as(rel);
 		if (op && op->get_euf_func_name() == "0")
@@ -4561,7 +4603,7 @@ void Reach::add_fapps_constraints(InstL& viol, InstL& inputConstraints, InstType
 			{
 				if (arg->get_type() == type || arg->get_type() == Num || arg->get_type() == Sig)
 				{
-					if (arg->get_size() == 1)
+					if (arg->is_boolean())
 					{
 //						if (arg->get_bval())
 //							compareList[argNum][Inst::_mpz_one].insert(arg);
@@ -4737,7 +4779,7 @@ void Reach::add_predicate_constraints(Solver* solver, InstL& predConstraints, In
 //					retrieve_cex_val(lhs, solver, true, false);
 //					retrieve_cex_val(rhs, solver, true, false);
 				int val = INVALID_SVAL;
-				if (lhs->get_size() == 1)
+				if (lhs->is_boolean())
 				{
 					int lhsVal = get_bval(solver, lhs);
 					int rhsVal = get_bval(solver, rhs);
@@ -4763,7 +4805,7 @@ void Reach::add_predicate_constraints(Solver* solver, InstL& predConstraints, In
 				}
 				if (tveVal != INVALID_SVAL) {
 					if (tveVal != val) {
-						if (lhs->get_size() == 1) {
+						if (lhs->is_boolean()) {
 								cout << "lhs: " << *lhs << "\t" << lhs->get_bval() << endl;
 								cout << "rhs: " << *rhs << "\t" << rhs->get_bval() << endl;
 						}
@@ -4839,7 +4881,7 @@ void Reach::add_predicate_constraints(Solver* solver, InstL& predConstraints, In
 				Inst* rhs = op->get_children()->back();
 
 				bool eq;
-				if (lhs->get_size() == 1)
+				if (lhs->is_boolean())
 				{
 					int lhsVal = lhs->get_bval();
 					int rhsVal = rhs->get_bval();
@@ -4871,7 +4913,7 @@ void Reach::add_predicate_constraints(Solver* solver, InstL& predConstraints, In
 				{
 					cout << "Error in handling learnt predicate: " << *tve << endl;
 					cout << *tve << "  " << tveVal << endl;
-					if (lhs->get_size() == 1)
+					if (lhs->is_boolean())
 					{
 						cout << *lhs << "  " << lhs->get_bval() << endl;
 						cout << *rhs << "  " << rhs->get_bval() << endl;
@@ -7190,6 +7232,21 @@ void Reach::preprocess_system() {
 }
 void Reach::collect_system() {
 	preprocess_system();
+  // Input-only arrays also require a function-capable solver context. Inspect
+  // every reachable expression sort, not only the next-state assignment lhs.
+  InstS theorySeen;
+  InstL theoryWork = {_ve_init, _ve_model, _ve_model_nsf, _ve_assume};
+  while (!theoryWork.empty()) {
+    Inst* expression = theoryWork.back();
+    theoryWork.pop_back();
+    if (!expression || !theorySeen.insert(expression).second)
+      continue;
+    Inst::en_array |= sort_present(expression->get_sort(), arraytype);
+    Inst::en_integer |= sort_present(expression->get_sort(), inttype);
+    const InstL* children = expression->get_children();
+    if (children)
+      theoryWork.insert(theoryWork.end(), children->begin(), children->end());
+  }
   collect_nsfs(_ve_init, _conjunct_init, true);
   _neg_init.clear();
   for (InstL::iterator it = _conjunct_init.begin(); it != _conjunct_init.end(); ++it) {
@@ -7211,7 +7268,7 @@ void Reach::collect_system() {
       if (ve_lhs->get_type() == Sig && !ve_rhs->childrenInfo[SIG])
       	_init_values[ve_lhs] = ve_rhs;
 
-	if (ve_lhs->get_size() != 1) {
+	if (!ve_lhs->is_boolean()) {
 		add_local_eq(ve_lhs, ve_rhs);
 	}
 
@@ -7450,7 +7507,7 @@ void Reach::collect_system() {
 
 //  for (int i = 1; i <= 4; i++) {
 ////  for (int i = 1; i <= INTERPRET_UF_NUM_LIMIT; i++) {
-//    for (int j = 0; j < pow(2, i); j++) {
+//    for (long j = 0; j < pow(2, i); j++) {
 ////    	cout << "creating " << i << "'d" << j << endl;
 //    	NumInst::create(j, i);
 //    }

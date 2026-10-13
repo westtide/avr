@@ -1,0 +1,13 @@
+; unsupported_array_payload_intmax: zero initialized array is mathematically SAFE, AVR must explicitly reject representation limit.
+1 sort bitvec 1
+2 sort bitvec 30
+3 sort bitvec 2
+4 sort array 2 3
+5 zero 3
+6 state 4 oversized_array
+7 init 4 6 5
+8 next 4 6 6
+9 input 2 symbolic_index
+10 read 3 6 9
+11 neq 1 10 5
+12 bad 11 property

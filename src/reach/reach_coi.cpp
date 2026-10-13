@@ -80,14 +80,14 @@ void Reach::COI_generalize(Inst*e, EVAL& s)
       }
       else if (e != _ve_prop_next_eq_1)
         s.relevantInp->insert(e);
-      isPred = (e->get_size() == 1) && (e != _ve_prop_next_eq_1);
+      isPred = (e->is_boolean()) && (e != _ve_prop_next_eq_1);
     }
     else {
       if (Inst::_s_reg.find(e) != Inst::_s_reg.end())
         s.relevantSet->insert(e);
       else if (e != _ve_prop_eq_1)
         s.relevantInp->insert(e);
-      isPred = (e->get_size() == 1) && (e != _ve_prop_eq_1);
+      isPred = (e->is_boolean()) && (e != _ve_prop_eq_1);
     }
   }
   break;
@@ -155,7 +155,7 @@ void Reach::COI_generalize(Inst*e, EVAL& s)
       reduced.first = w;
       reduced.second = e->acex_coi;
 
-      if (e->get_size() == 1) {
+      if (e->is_boolean()) {
         int eVal = e->get_bval();
         assert(eVal != INVALID_SVAL);
         e->subs_coi = NumInst::create(eVal, 1);
@@ -166,7 +166,7 @@ void Reach::COI_generalize(Inst*e, EVAL& s)
       Inst* child = ch->front();
       COI_generalize(child, s);
 
-      assert (e->get_size() == 1);
+      assert (e->is_boolean());
       int eVal = e->get_bval();
       assert(eVal != INVALID_SVAL);
       e->subs_coi = NumInst::create(eVal, 1);
@@ -211,7 +211,7 @@ void Reach::COI_generalize(Inst*e, EVAL& s)
 
       }
 
-      assert (e->get_size() == 1);
+      assert (e->is_boolean());
       assert(eVal != INVALID_SVAL);
       e->subs_coi = NumInst::create(eVal, 1);
     }
@@ -231,7 +231,7 @@ void Reach::COI_generalize(Inst*e, EVAL& s)
         childList.push_back(rhs->acex_coi);
       }
 
-      if (lhs->get_size() != 1) {
+      if (!lhs->is_boolean()) {
         if (lhs->get_type() != Sig && lhs->get_type() != Num)
           isPred = true;
         else if (rhs->get_type() != Sig && rhs->get_type() != Num)
@@ -254,7 +254,7 @@ void Reach::COI_generalize(Inst*e, EVAL& s)
 //          update = true;
 //        childList.push_back((*it)->acex_coi);
 
-        isPred = (e->get_size() == 1);
+        isPred = (e->is_boolean());
       }
     }
   }
@@ -270,7 +270,7 @@ void Reach::COI_generalize(Inst*e, EVAL& s)
   if (update)
     e->acex_coi = e->apply_children(childList);
 
-  if (e->get_size() == 1) {
+  if (e->is_boolean()) {
     int eVal = e->get_bval();
     assert(eVal != INVALID_SVAL);
 
@@ -448,7 +448,7 @@ void Reach::COI_generalize_sim(Inst*e, SIMULATION_POSITION& pre, SIMULATION_POSI
       }
     }
 
-    isPred = (e->get_size() == 1);
+    isPred = (e->is_boolean());
   }
   break;
   case Wire: {
@@ -462,7 +462,7 @@ void Reach::COI_generalize_sim(Inst*e, SIMULATION_POSITION& pre, SIMULATION_POSI
   break;
   case Const: {
 
-    isPred = (e->get_size() == 1);
+    isPred = (e->is_boolean());
   }
   break;
   case Num: {
@@ -502,7 +502,7 @@ void Reach::COI_generalize_sim(Inst*e, SIMULATION_POSITION& pre, SIMULATION_POSI
       Inst* child = ch->front();
       COI_generalize_sim(child, pre, next);
 
-      assert (e->get_size() == 1);
+      assert (e->is_boolean());
       int eVal = e->get_bval();
       assert(eVal != INVALID_SVAL);
       e->subs_coi = NumInst::create(eVal, 1);
@@ -527,7 +527,7 @@ void Reach::COI_generalize_sim(Inst*e, SIMULATION_POSITION& pre, SIMULATION_POSI
         }
       }
 
-      assert (e->get_size() == 1);
+      assert (e->is_boolean());
       assert(eVal != INVALID_SVAL);
       e->subs_coi = NumInst::create(eVal, 1);
     }
@@ -542,7 +542,7 @@ void Reach::COI_generalize_sim(Inst*e, SIMULATION_POSITION& pre, SIMULATION_POSI
       childList_sub.push_back(lhs->subs_coi);
       childList_sub.push_back(rhs->subs_coi);
 
-      isPred = (lhs->get_size() == 1);
+      isPred = (lhs->is_boolean());
     }
     else {
       string ufType = op->get_euf_func_name();
@@ -555,7 +555,7 @@ void Reach::COI_generalize_sim(Inst*e, SIMULATION_POSITION& pre, SIMULATION_POSI
         update_sub = true;
         childList_sub.push_back((*it)->subs_coi);
 
-        isPred = (e->get_size() == 1);
+        isPred = (e->is_boolean());
       }
     }
   }
@@ -569,7 +569,7 @@ void Reach::COI_generalize_sim(Inst*e, SIMULATION_POSITION& pre, SIMULATION_POSI
   if (update_sub)
     e->subs_coi = e->apply_children(childList_sub);
 
-  if (e->get_size() == 1) {
+  if (e->is_boolean()) {
     int eVal = e->get_bval();
     assert(eVal != INVALID_SVAL);
 
@@ -662,7 +662,7 @@ void Reach::COI_generalize_sim(Inst*e, SIMULATION_POSITION& pre, SIMULATION_POSI
           Inst* rhs;
           SigInst* sig = SigInst::as(tvePre);
           if (sig) {
-            assert(sig->get_size() == 1);
+            assert(sig->is_boolean());
             lhs = sig;
             rhs = NumInst::create(1, 1);
           }
@@ -850,7 +850,7 @@ bool Reach::find_from_minset2(Solver* solver, Inst*e, InstS& relSig, InstS& relC
   }
   break;
   case Num: {
-    if (e->get_size() != 1)
+    if (!e->is_boolean())
     	if (noprune || relConst.find(e) != relConst.end()) {
     	}
     	else
@@ -1160,7 +1160,7 @@ bool Reach::add_local_eq(Inst* lhs, Inst* rhs) {
 bool Reach::allowed_relation(Inst* lhs, Inst* rhs, OpInst::OpType opt) {
 	assert(lhs->get_sort() == rhs->get_sort());
 
-	if (lhs->get_sort_type() == bvtype && lhs->get_size() == 1)
+	if (lhs->get_sort_type() == bvtype && lhs->is_boolean())
 		return false;
 	if (lhs->get_type() == Num && rhs->get_type() == Num) {
 		if (opt == OpInst::Eq) {
@@ -1571,7 +1571,7 @@ void Reach::COI_prune_relation(Inst*e, EVAL& s, int region)
 		return;
 	}
 	e->set_visit();
-	assert(e->get_size() == 1);
+	assert(e->is_boolean());
 
 	e->coi.set_coi_key();
 #ifndef PERFORMANCE_NODRAW
@@ -1734,7 +1734,7 @@ void Reach::COI_prune_relation(Inst*e, EVAL& s, int region)
 		InstToInstM tmpMap;
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				COI_prune_relation(*it, s, region);
 			}
@@ -1770,7 +1770,7 @@ void Reach::COI_prune_relation(Inst*e, EVAL& s, int region)
         }
       }
 
-      if (lhs->get_size() != 1)
+      if (!lhs->is_boolean())
       {
         isPred = add_local_eq(lhs, rhs);
       }
@@ -2054,7 +2054,7 @@ void Reach::COI_prune_term(Inst*e, EVAL& s, int region)
 
 		for (InstL::const_iterator it = ch->begin(), end_it = ch->end(); it != end_it; ++it)
 		{
-			if ((*it)->get_size() == 1)
+			if ((*it)->is_boolean())
 			{
 				COI_prune_relation(*it, s, region);
 			}

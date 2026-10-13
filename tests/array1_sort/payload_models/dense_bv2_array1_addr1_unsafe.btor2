@@ -1,0 +1,39 @@
+; AVR full-array payload regression: dense_bv2_array1_addr1_unsafe
+1 sort bitvec 1
+2 sort bitvec 2
+3 sort array 2 1
+4 zero 1
+5 one 1
+6 state 3 nonuniform_array
+7 init 3 6 4
+8 constd 2 1
+9 write 3 6 8 5
+10 next 3 6 9
+11 zero 1
+12 state 1 valid_previous_write
+13 init 1 12 11
+14 one 1
+15 next 1 12 14
+16 constd 2 0
+17 read 1 6 16
+18 eq 1 17 4
+19 constd 2 1
+20 read 1 6 19
+21 eq 1 20 5
+22 constd 2 2
+23 read 1 6 22
+24 eq 1 23 4
+25 constd 2 3
+26 read 1 6 25
+27 eq 1 26 4
+28 and 1 18 21
+29 and 1 28 24
+30 and 1 29 27
+31 input 2 symbolic_index
+32 read 1 6 31
+33 eq 1 31 8
+34 ite 1 33 5 4
+35 eq 1 32 34
+36 and 1 30 35
+37 and 1 12 36
+38 bad 37 property

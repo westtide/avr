@@ -16,9 +16,24 @@
  */
 
 #include "reach_cex.h"
+#include <limits>
+#include <stdexcept>
 
 namespace reach
 {
+
+static unsigned checked_array_payload_width(Inst* array, unsigned& elements) {
+	SORT* domain = array->get_sort_domain();
+	SORT* range = array->get_sort_range();
+	if (domain->type != bvtype || range->type != bvtype || domain->sz == 0 || range->sz == 0 ||
+			domain->sz >= numeric_limits<unsigned>::digits)
+		throw runtime_error("AVR backend unsupported: dense array witness payload width");
+	elements = 1u << domain->sz;
+	const unsigned maxPayload = static_cast<unsigned>(numeric_limits<int>::max());
+	if (range->sz > maxPayload / elements)
+		throw runtime_error("AVR backend unsupported: dense array witness payload exceeds supported width");
+	return elements * range->sz;
+}
 
 InstToIntM CEX::m_instId = InstToIntM();
 
@@ -71,7 +86,7 @@ void CEX::print (ofstream& out, int length, InstL& propList) {
 			}
 		}
 
-		if (c.constant->get_size() != 1) {
+		if (!c.constant->is_boolean()) {
 			mpz_class* val = c.constant->get_ival();
 			if (val != INVALID_SMPZ) {
 				if (c.isinput)
@@ -141,10 +156,13 @@ void CEX::process_step(ofstream& out, InstToMpzM& inMap, int idx, bool isinput) 
 			SORT* r = m.first->get_sort_range();
 			assert(d->type == bvtype);
 			assert(r->type == bvtype);
-			int width = d->sz;
-			int size = r->sz;
-			int maxaddress = pow(2, width) - 1;
-			for (int i = maxaddress; i >= 0; i--) {
+			unsigned elements;
+			checked_array_payload_width(m.first, elements);
+			unsigned width = d->sz;
+			unsigned size = r->sz;
+			unsigned maxaddress = elements - 1;
+			for (unsigned remaining = elements; remaining > 0; --remaining) {
+				unsigned i = remaining - 1;
 				string data_str = val.substr(i*size, size);
 				Inst* address = NumInst::create(maxaddress - i, width, SORT());
 				mpz_class* valn = NumInst::as(address)->get_mpz();
@@ -219,6 +237,17 @@ void CEX::process_step(ofstream& out, InstToMpzM& inMap, int idx, bool isinput) 
 
 string CEX::get_string (Inst* lhs, mpz_class& val) {
 	string s = val.get_str(2);
+	if (lhs->get_sort_type() == arraytype) {
+		unsigned elements;
+		unsigned payloadWidth = checked_array_payload_width(lhs, elements);
+		if (val < 0 || s.length() > payloadWidth)
+			throw runtime_error("AVR backend error: invalid concrete dense array witness value");
+		// Array model integers lose leading zeros. Restore the complete domain,
+		// not just one element, before process_step extracts the witness cells.
+		if (s.length() < payloadWidth)
+			s.insert(0, payloadWidth - s.length(), '0');
+		return s;
+	}
 	str_extend(s, lhs->get_size());
 	return s;
 }

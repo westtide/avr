@@ -1,0 +1,29 @@
+[
+  {
+    "case": "unsupported_array_domain31",
+    "model": "unsupported_models/unsupported_array_domain31.btor2",
+    "expected": "Unsupported",
+    "optional_feature": false,
+    "reason": "Backend must reject explicit dense payload/domain limit rather than emit an unsound array initializer.",
+    "mathematical_property": "UNSAT",
+    "earliest_bad_frame": null
+  },
+  {
+    "case": "unsupported_array_payload_intmax",
+    "model": "unsupported_models/unsupported_array_payload_intmax.btor2",
+    "expected": "Unsupported",
+    "optional_feature": false,
+    "reason": "Backend must reject explicit dense payload/domain limit rather than emit an unsound array initializer.",
+    "mathematical_property": "UNSAT",
+    "earliest_bad_frame": null
+  },
+  {
+    "case": "unsupported_array_domain32",
+    "model": "unsupported_models/unsupported_array_domain32.btor2",
+    "expected": "Unsupported",
+    "optional_feature": false,
+    "reason": "Explicit wide-domain rejection prevents silently skipped zero initialization.",
+    "mathematical_property": "UNSAT",
+    "earliest_bad_frame": null
+  }
+]

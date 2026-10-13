@@ -203,7 +203,7 @@ void STRUCTURE_ANALYSIS::get_fapps(Inst* top, Inst* parent, string s)
 		{
 			if (!isUF)
 			{
-				if ((*it)->get_size() == 1)
+				if ((*it)->is_boolean())
 				{
 					get_fapps(*it, parent, midix + suffix);
 					continue;

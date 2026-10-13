@@ -14,11 +14,11 @@ import os, sys, time, argparse, shutil, signal
 from subprocess import Popen, PIPE
 from enum import Enum
 
-version="2.2.3"
+version="2.3.0"
 start_time = time.time()
 
 cmdSuffix = ""
-maxWorkers = 16
+maxWorkers = 32
 
 optSuffix = " "
 commands = []
@@ -27,21 +27,25 @@ disableNew = False
 numW = 0
 processes = {}
 
+avrPath = os.path.dirname(os.path.abspath(__file__))
+
 DEFAULT_TOP="-"
-DEFAULT_OUT="output"
+DEFAULT_OUT=f"output"
 DEFAULT_NAME="test"
-DEFAULT_WORKERS="workers.txt"
+DEFAULT_WORKERS=f"{avrPath}/workers.txt"
 #DEFAULT_BIN="bin"
-DEFAULT_TIMEOUT=3590
-DEFAULT_MEMOUT=118000
+DEFAULT_TIMEOUT=3595
+DEFAULT_MEMOUT=115000
 DEFAULT_PRINT_SMT2=False
-DEFAULT_PRINT_WITNESS=False
+DEFAULT_PRINT_WITNESS=True
+DEFAULT_WITNESS_FILE=f"{DEFAULT_OUT}/cex.witness"
 
 maxTimeSec = DEFAULT_TIMEOUT
 maxMemMB = DEFAULT_MEMOUT
 maxInitW = 16
 resultW = 0
 out_path = DEFAULT_OUT + "/" + DEFAULT_NAME
+witness_path = DEFAULT_OUT + "/cex.witness"
 
 header="""
 -----------------
@@ -74,6 +78,7 @@ def getopts(header):
 	p.add_argument('--memout',          help='memory limit in mega bytes (default: %s)' % DEFAULT_MEMOUT, type=int, default=DEFAULT_MEMOUT)
 	p.add_argument('--smt2',     		help='toggles printing system in smt2 format (default: %r)' % DEFAULT_PRINT_SMT2, action="count", default=0)
 	p.add_argument('--witness',         help='toggles printing witness (default: %r)' % DEFAULT_PRINT_WITNESS, action="count", default=0)
+	p.add_argument('--witness-file',    help='<output-path-for-witness-file> (default: %s)' % DEFAULT_WITNESS_FILE, type=str, default=DEFAULT_WITNESS_FILE)
 	args, leftovers = p.parse_known_args()
 	return args, p.parse_args()
 
@@ -83,6 +88,7 @@ def setup():
 	global maxTimeSec
 	global maxMemMB
 	global out_path
+	global witness_path
 	known, opts = getopts(header)
 	print(short_header)
 	#if not os.path.isfile(opts.bin + "/avr"):
@@ -97,11 +103,24 @@ def setup():
 		os.makedirs(opts.out)
 	out_path = opts.out + "/pr_" + opts.name
 	if os.path.exists(out_path):
-		shutil.rmtree(out_path)
+		retries = 5
+		delay = 1
+		for attempt in range(retries):
+			try:
+				shutil.rmtree(out_path)
+				break
+			except OSError as e:
+				if attempt < retries:
+					time.sleep(delay)
+				else:
+					print(f"Failed to remove directory {out_path} after {retries} attempts.")
+					raise # Re-raise the exception if all retries fail
 	os.makedirs(out_path)
+	print(f"Out path: {out_path}")
 
 	if not os.path.isfile(opts.file):
 		raise Exception("Unable to find top file: %s" % opts.file)
+	witness_path = opts.witness_file
 
 	print(time_str(), "(starting avr proof race)")
 	print(time_str(), "(output dir: %s)" % out_path)
@@ -162,13 +181,13 @@ def run_command_all():
 			if (maxWorkers < 0 or len(commands) < maxWorkers):
 				cmd = x.strip()
 				if not cmd.startswith('#'):
-					commands.append(x.strip())
+					commands.append(f"python3 {avrPath}/{x.strip()}")
 	print (time_str(), "(max %d workers)" % len(commands))
 
 def run_command(idx):
 	elapsed_time = time.time() - start_time
 	timeLimit = opts.timeout - elapsed_time
-	timeSuffix = " --timeout " + str(int(0.99*timeLimit))
+	timeSuffix = " --timeout " + str(int(0.999*timeLimit))
 
 	mem_usage = mem_usage_all()
 	memLimit = max(opts.memout - (1.5*mem_usage), 500)
@@ -216,7 +235,7 @@ def run_commands_new(maxW):
 		print (time_str(), "(total %d workers using %.0f MB)" % (numW, mem_usage_all()))
 	
 def kill_allowed(mem_usage):
-	if mem_usage >= (0.9*maxMemMB):
+	if mem_usage >= (0.75*maxMemMB):
 		return True
 	#print("kill not allowed since %f < %f" % (mem_usage, 0.98*maxMemMB))
 	return False
@@ -248,7 +267,7 @@ def kill_commands(maxW):
 		return
 	
 	if (numW <= 1):
-		return;
+		return
 	
 	numKill = 0
 	while (numKill < maxW):
@@ -383,6 +402,7 @@ def post_compile(retval):
 		#elif filename.endswith('result.pr') or filename.endswith('design.smt2') or filename.startswith('inv.') or filename.startswith('cex.witness'):
 		elif filename.endswith('proof.smt2') or filename.endswith('design.smt2') or filename.startswith('inv.') or filename.startswith('cex.witness'):
 			shutil.copy(res_path + filename, out_path)
+			shutil.copy(res_path + filename, witness_path)
 		elif filename.endswith('btormc.out'):
 			shutil.copy(res_path + filename, out_path+ "/cex.witness")
 	print(time_str(), "(copied results from worker %d in %s)" % (resultW, out_path))

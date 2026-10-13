@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# Large BTOR2 expression graphs need more than the usual 8 MiB stack during
+# frontend traversal. Keep a higher existing limit; the caller's memory cap
+# still bounds all allocations, including the stack.
+avr_stack_kib=$(ulimit -s)
+if [ "$avr_stack_kib" != "unlimited" ] && [ "$avr_stack_kib" -lt 65536 ]; then
+	if ! ulimit -S -s 65536; then
+		echo "AVR requires a stack limit of at least 65536 KiB" >&2
+		exit 1
+	fi
+fi
+
 fname="$1"
 top="$2"
 p_dir="$3"
@@ -67,8 +78,11 @@ fi
 OUT_PATH="$OUT_DIR/work_$bm"
 pidFile="$OUT_PATH/pid.txt"
 
-rm -rf $OUT_PATH
-mkdir $OUT_PATH
+if [ -e "$OUT_PATH" ]; then
+	echo "AVR output directory already exists: $OUT_PATH; use a new directory" >&2
+	exit 1
+fi
+mkdir "$OUT_PATH" || exit 1
 mkdir $OUT_PATH/data
 mkdir $OUT_PATH/dot
 mkdir $OUT_PATH/dot/ref
@@ -187,7 +201,7 @@ then
 	OUT_VERILOG="$bm"_y.v
 
 	YOSYS_CMD=$OUT_PATH/yosys.tcl
-	rm -f $YOSYS_CMD
+	# Preserve the generated command file with the other run artifacts.
 
 	echo "yosys read_verilog -noopt -nolatches -I $BM_PATH -sv $OUT_PATH/$fname;" >> $YOSYS_CMD
 	if [ $AUTOTOP -eq 1 ]

@@ -159,7 +159,7 @@ void Reach::check_excc(ABSTRACT_REACH_VIOL& abViol, InstS& implications) {
       mpz_class* rhsVal = INVALID_SMPZ;
       mpz_class valTmp;
       bool valid = false;
-      if (rhs->get_size() == 1) {
+      if (rhs->is_boolean()) {
         int bval = rhs->get_bval();
         if (bval == INVALID_SVAL) {
 //          AVR_LOG(15, 0, *(v.first) << " -s-> " << *rhs << endl);
@@ -198,7 +198,7 @@ void Reach::check_excc(ABSTRACT_REACH_VIOL& abViol, InstS& implications) {
       mpz_class* rhsVal = INVALID_SMPZ;
       mpz_class valTmp;
       bool valid = false;
-      if (rhs->get_size() == 1) {
+      if (rhs->is_boolean()) {
         int bval = rhs->get_bval();
         if (bval == INVALID_SVAL) {
 //          AVR_LOG(15, 0, *(v.first) << " -s-> " << *rhs << endl);

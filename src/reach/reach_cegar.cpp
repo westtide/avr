@@ -11,6 +11,7 @@
 #include "reach_core.h"
 #include "reach_random.h"
 #include <execinfo.h>	// to dump call stacks (backtrace, backtrace_symbols)
+#include <stdexcept>
 
 namespace reach
 {
@@ -108,7 +109,7 @@ void Reach::retrieve_ab_sol(Solver* solver, Inst* e, InstS& relSig, InstS& relCo
   // now do the children
   const InstL* ch = e->get_children();
 
-	if (e->get_size() == 1) {
+	if (e->is_boolean()) {
 		if(e->get_type() == Sig) {
 			_min_term.all_predicates.push_back(e);
 		}
@@ -241,7 +242,7 @@ void Reach::retrieve_cex_val(Inst* e, Solver*solver, bool abstract, bool init_vi
   }
 
   bool dontcare = false;
-	if (e->get_size() == 1)
+	if (e->is_boolean())
 	{
 		int val = INVALID_SVAL;
 		bool res = solver->get_assignment(e, val);
@@ -260,7 +261,7 @@ void Reach::retrieve_cex_val(Inst* e, Solver*solver, bool abstract, bool init_vi
 	if (!dontcare) {
 		if (abstract)
 		{
-			if (e->get_size() == 1)
+			if (e->is_boolean())
 			{
 				int val = e->get_bval();
 				assert (val != INVALID_SVAL);
@@ -425,7 +426,7 @@ void Reach::retrieve_cex_val(Inst* e, Solver*solver, bool abstract, bool init_vi
 		else
 		{
 			mpz_class* valp;
-			if (e->get_size() == 1) {
+			if (e->is_boolean()) {
 				int valb = e->get_bval();
 				assert(valb != INVALID_SVAL);
 				valp = NumInst::as(NumInst::create(valb, 1, SORT()))->get_mpz();
@@ -803,13 +804,30 @@ void Reach::refine(InstL& hardConstraints, ABSTRACT_CUBE& abCube, Inst *top_wo_r
 
 			if (res == 0) {
 				// the given formula is SAT
-//				Solver* mdl_solver = (new_conc_solver(false, AVR_BV_IDX, mdl));
-//				mdl_solver->s_assert(viol);
-//				int resNew = mdl_solver->s_check(BV_QUERY_TIMEOUT, true);
-//				assert(resNew == AVR_QSAT);
-//				retrieve_cex_val(viol, mdl_solver, false, true);
+				Solver* mdl_solver = (new_conc_solver(false, AVR_BV_IDX, mdl));
+				Inst* ve_viol = OpInst::create(OpInst::LogAnd, viol);
+				mdl_solver->s_assert(ve_viol);
+				int resNew = mdl_solver->s_check(BV_QUERY_TIMEOUT, true);
+				assert(resNew == AVR_QSAT);
+				retrieve_cex_val(ve_viol, mdl_solver, false, true);
 //	      collect_values(viol, mdl_solver, false, true);
 //				print_concrete_min_term();
+
+				if (Config::g_print_witness) {
+					// Core extraction does not retain a concrete model. Refresh the
+					// same checked formula before a zero-step CEX uses these values;
+					// otherwise the last abstract solver's negative value IDs leak.
+					InstL witnessConstraints = hardConstraints;
+					witnessConstraints.insert(witnessConstraints.end(), viol.begin(), viol.end());
+					Inst* witnessFormula = OpInst::create(OpInst::LogAnd, witnessConstraints);
+					bv_solver->s_assert(witnessFormula);
+					if (bv_solver->s_check(BV_QUERY_TIMEOUT, true) != AVR_QSAT)
+						throw runtime_error("AVR backend error: concrete witness model refresh was not SAT");
+					// A fresh retrieval key invalidates older abstract assignments.
+					// Retrieve only nodes in this asserted formula; unrelated state
+					// and input symbols remain absent in the partial witness.
+					retrieve_cex_val(witnessFormula, bv_solver, false, true);
+				}
 
 				_feas_sat_res = true;
 				break;
@@ -2048,7 +2066,7 @@ void Reach::trace_back(Solver*solver, Inst *full_formula, InstL& assumptions, In
     InstL tsim_in = _abViol.mainConstraints;
     InstL tsim_inp;
     for (auto& inp: relevantNextInp) {
-      if (inp->get_size() == 1) {
+      if (inp->is_boolean()) {
         switch(inp->get_bval()) {
         case 1:
           tsim_inp.push_back(inp);
@@ -2060,7 +2078,7 @@ void Reach::trace_back(Solver*solver, Inst *full_formula, InstL& assumptions, In
       }
     }
     for (auto& inp: relevantPresentInp) {
-      if (inp->get_size() == 1) {
+      if (inp->is_boolean()) {
         switch(inp->get_bval()) {
         case 1:
           tsim_inp.push_back(inp);
@@ -7341,7 +7359,7 @@ int Reach::verify() {
 							{
 								Inst* num = NumInst::create((*it).second, tve->get_size(), tve->get_sort());
 								NumInst* val = NumInst::as(num);
-								if (tve->get_size() == 1)
+								if (tve->is_boolean())
 								{
 									if (val->get_num() == 0)
 										conjunct_c.push_back(OpInst::create(OpInst::LogNot, tve));

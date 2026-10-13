@@ -1,0 +1,24 @@
+; AVR Array1 sort regression: array_inequality_safe
+1 sort bitvec 1
+2 sort bitvec 2
+3 sort array 2 1
+4 zero 1
+5 one 1
+6 zero 2
+7 one 2
+8 state 3 left
+9 init 3 8 4
+10 state 3 right
+11 init 3 10 4
+12 write 3 8 6 5
+13 next 3 8 12
+14 write 3 10 7 5
+15 next 3 10 14
+16 zero 1
+17 one 1
+18 state 1 valid_previous_write
+19 init 1 18 16
+20 next 1 18 17
+21 eq 1 8 10
+22 and 1 18 21
+23 bad 22 property

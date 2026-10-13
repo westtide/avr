@@ -1022,7 +1022,7 @@ if(to_simplify == true)
 	e->set_hash1(hash);
 
 	if (wn_1bit_dp_to_control) {
-		if ((exps.front())->get_size() == 1) {
+		if ((exps.front())->is_boolean()) {
 			switch (op) {
 				case BitWiseAnd:
 					op = LogAnd;
@@ -1659,7 +1659,7 @@ if(to_simplify == true)
 		}
 	}
 	
-	if ((op == Eq) && wn_simplify_const_pred && ((exps.front())->get_size() == 1)) {
+	if ((op == Eq) && wn_simplify_const_pred && ((exps.front())->is_boolean())) {
 		InstL::const_iterator it = exps.begin();
 		Inst *ve_lhs = *it++;
 		Inst *ve_rhs = *it;
@@ -1696,7 +1696,7 @@ if(to_simplify == true)
 		}
 	}
 	
-	if ((op == NotEq) && wn_simplify_const_pred && ((exps.front())->get_size() == 1)) {
+	if ((op == NotEq) && wn_simplify_const_pred && ((exps.front())->is_boolean())) {
 		InstL::const_iterator it = exps.begin();
 		Inst *ve_lhs = *it++;
 		Inst *ve_rhs = *it;

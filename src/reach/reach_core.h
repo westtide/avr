@@ -649,7 +649,7 @@ class BV_Mapper: public Solver::TheoryMapper {
 };
 
 // Uses integer to represent variables and EUF theory to operate on them
-// Uses Boolean type for nodes with size=1
+// Uses Boolean type only for scalar one-bit bit vectors.
 class EUF_Mapper: public Solver::TheoryMapper {
 	virtual Solver::TheoryMapper::OpType fetch_op(Inst* e) {
 		if (e)
@@ -666,7 +666,7 @@ class EUF_Mapper: public Solver::TheoryMapper {
 //				return (e->get_size() == 1) ? Solver::TheoryMapper::BOOL_VAR : Solver::TheoryMapper::BV_VAR;
 				return Solver::TheoryMapper::BV_VAR;
 		}
-		return (e->get_size() == 1) ? Solver::TheoryMapper::BOOL_VAR : Solver::TheoryMapper::EUF_VAR;
+		return e->is_boolean() ? Solver::TheoryMapper::BOOL_VAR : Solver::TheoryMapper::EUF_VAR;
 	}
 	virtual LogicType fetch_logic(void) {
 		return QF_UF;
@@ -677,7 +677,7 @@ class EUF_Mapper: public Solver::TheoryMapper {
 };
 
 // Uses BVs to represent wide variables and UFBV theory to operate on them
-// Uses Boolean type for nodes with size=1
+// Uses Boolean type only for scalar one-bit bit vectors.
 class UFBV_Mapper: public Solver::TheoryMapper {
 	virtual Solver::TheoryMapper::OpType fetch_op(Inst* e) {
 		if (e) {
@@ -719,7 +719,7 @@ class UFBV_Mapper: public Solver::TheoryMapper {
 			else if (e->ab_interpret.output_concrete())
 				return Solver::TheoryMapper::BV_VAR;
 		}
-		return (e->get_size() == 1) ? Solver::TheoryMapper::BOOL_VAR : Solver::TheoryMapper::EUF_VAR;
+		return e->is_boolean() ? Solver::TheoryMapper::BOOL_VAR : Solver::TheoryMapper::EUF_VAR;
 	}
 	virtual LogicType fetch_logic(void) {
 		return QF_UFBV;

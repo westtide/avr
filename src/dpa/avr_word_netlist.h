@@ -189,6 +189,10 @@ public:
 	SortType get_sort_type() {
 		return m_sort.type;
 	}
+	// Array sizes describe their element width, not a Boolean container.
+	bool is_boolean() {
+		return get_sort_type() == bvtype && get_size() == 1;
+	}
 	unsigned get_sort_sz() {
 		return m_sort.sz;
 	}

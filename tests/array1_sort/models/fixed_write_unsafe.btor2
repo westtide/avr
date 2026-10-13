@@ -1,0 +1,21 @@
+; AVR Array1 sort regression: fixed_write_unsafe
+1 sort bitvec 1
+2 sort bitvec 2
+3 sort array 2 1
+4 zero 1
+5 one 1
+6 zero 2
+7 one 2
+8 state 3 flags
+9 init 3 8 4
+10 write 3 8 6 5
+11 next 3 8 10
+12 zero 1
+13 one 1
+14 state 1 valid_previous_write
+15 init 1 14 12
+16 next 1 14 13
+17 read 1 8 6
+18 eq 1 17 5
+19 and 1 14 18
+20 bad 19 property

@@ -1,0 +1,8 @@
+; AVR Array1 sort regression: bv1_control_unsafe
+1 sort bitvec 1
+2 zero 1
+3 one 1
+4 state 1 scalar_flag
+5 init 1 4 2
+6 next 1 4 3
+7 bad 4 property

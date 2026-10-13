@@ -1,0 +1,388 @@
+[
+  {
+    "case": "constant_init_safe",
+    "model": "models/constant_init_safe.btor2",
+    "expected": "UNSAT",
+    "reason": "All four stored flags initially and forever zero.",
+    "optional_feature": false,
+    "earliest_bad_frame": null
+  },
+  {
+    "case": "fixed_write_safe",
+    "model": "models/fixed_write_safe.btor2",
+    "expected": "UNSAT",
+    "reason": "After a transition, flags[0] is one.",
+    "optional_feature": false,
+    "earliest_bad_frame": null
+  },
+  {
+    "case": "symbolic_write_safe",
+    "model": "models/symbolic_write_safe.btor2",
+    "expected": "UNSAT",
+    "reason": "Saved symbolic index/value match the previous transition write.",
+    "optional_feature": false,
+    "earliest_bad_frame": null
+  },
+  {
+    "case": "independent_indices_safe",
+    "model": "models/independent_indices_safe.btor2",
+    "expected": "UNSAT",
+    "reason": "flags[0] becomes one while flags[1] remains zero.",
+    "optional_feature": false,
+    "earliest_bad_frame": null
+  },
+  {
+    "case": "array_equality_safe",
+    "model": "models/array_equality_safe.btor2",
+    "expected": "UNSAT",
+    "reason": "Two zero arrays receive identical symbolic writes and remain equal.",
+    "optional_feature": false,
+    "earliest_bad_frame": null
+  },
+  {
+    "case": "array_inequality_safe",
+    "model": "models/array_inequality_safe.btor2",
+    "expected": "UNSAT",
+    "reason": "Different fixed indices distinguish the two arrays after a transition.",
+    "optional_feature": false,
+    "earliest_bad_frame": null
+  },
+  {
+    "case": "input_array_safe",
+    "model": "models/input_array_safe.btor2",
+    "expected": "UNSAT",
+    "reason": "Input array indices are independent; writing index zero preserves index one.",
+    "optional_feature": true,
+    "earliest_bad_frame": null
+  },
+  {
+    "case": "bv1_control_safe",
+    "model": "models/bv1_control_safe.btor2",
+    "expected": "UNSAT",
+    "reason": "Ordinary BV1 state control: hold zero or become one.",
+    "optional_feature": false,
+    "earliest_bad_frame": null
+  },
+  {
+    "case": "array_bv8_control_safe",
+    "model": "models/array_bv8_control_safe.btor2",
+    "expected": "UNSAT",
+    "reason": "Ordinary Array(BV2,BV8) state writes and reads byte 165.",
+    "optional_feature": false,
+    "earliest_bad_frame": null
+  },
+  {
+    "case": "constant_init_unsafe",
+    "model": "models/constant_init_unsafe.btor2",
+    "expected": "SAT",
+    "reason": "All four stored flags initially and forever zero.",
+    "optional_feature": false,
+    "earliest_bad_frame": 0
+  },
+  {
+    "case": "fixed_write_unsafe",
+    "model": "models/fixed_write_unsafe.btor2",
+    "expected": "SAT",
+    "reason": "After a transition, flags[0] is one.",
+    "optional_feature": false,
+    "earliest_bad_frame": 1
+  },
+  {
+    "case": "symbolic_write_unsafe",
+    "model": "models/symbolic_write_unsafe.btor2",
+    "expected": "SAT",
+    "reason": "Saved symbolic index/value match the previous transition write.",
+    "optional_feature": false,
+    "earliest_bad_frame": 1
+  },
+  {
+    "case": "independent_indices_unsafe",
+    "model": "models/independent_indices_unsafe.btor2",
+    "expected": "SAT",
+    "reason": "flags[0] becomes one while flags[1] remains zero.",
+    "optional_feature": false,
+    "earliest_bad_frame": 1
+  },
+  {
+    "case": "array_equality_unsafe",
+    "model": "models/array_equality_unsafe.btor2",
+    "expected": "SAT",
+    "reason": "Two zero arrays receive identical symbolic writes and remain equal.",
+    "optional_feature": false,
+    "earliest_bad_frame": 0
+  },
+  {
+    "case": "array_inequality_unsafe",
+    "model": "models/array_inequality_unsafe.btor2",
+    "expected": "SAT",
+    "reason": "Different fixed indices distinguish the two arrays after a transition.",
+    "optional_feature": false,
+    "earliest_bad_frame": 1
+  },
+  {
+    "case": "input_array_unsafe",
+    "model": "models/input_array_unsafe.btor2",
+    "expected": "SAT",
+    "reason": "Input array indices are independent; writing index zero preserves index one.",
+    "optional_feature": true,
+    "earliest_bad_frame": 0
+  },
+  {
+    "case": "bv1_control_unsafe",
+    "model": "models/bv1_control_unsafe.btor2",
+    "expected": "SAT",
+    "reason": "Ordinary BV1 state control: hold zero or become one.",
+    "optional_feature": false,
+    "earliest_bad_frame": 1
+  },
+  {
+    "case": "array_bv8_control_unsafe",
+    "model": "models/array_bv8_control_unsafe.btor2",
+    "expected": "SAT",
+    "reason": "Ordinary Array(BV2,BV8) state writes and reads byte 165.",
+    "optional_feature": false,
+    "earliest_bad_frame": 1
+  },
+  {
+    "case": "uninitialized_array_unsafe",
+    "model": "models/uninitialized_array_unsafe.btor2",
+    "expected": "SAT",
+    "reason": "Uninitialized array can have flags[0]=1 and flags[1]=0.",
+    "optional_feature": false,
+    "earliest_bad_frame": 0
+  },
+  {
+    "case": "dense_bv1_array1_addr0_safe",
+    "model": "payload_models/dense_bv1_array1_addr0_safe.btor2",
+    "expected": "UNSAT",
+    "optional_feature": false,
+    "earliest_bad_frame": null,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 1,
+    "payload_element_bits": 1,
+    "payload_address_values": [
+      1,
+      0
+    ],
+    "initializer_kind": "zero then fixed write"
+  },
+  {
+    "case": "dense_bv2_array1_addr0_safe",
+    "model": "payload_models/dense_bv2_array1_addr0_safe.btor2",
+    "expected": "UNSAT",
+    "optional_feature": false,
+    "earliest_bad_frame": null,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 1,
+    "payload_address_values": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "initializer_kind": "zero then fixed write"
+  },
+  {
+    "case": "dense_bv2_array1_addr1_safe",
+    "model": "payload_models/dense_bv2_array1_addr1_safe.btor2",
+    "expected": "UNSAT",
+    "optional_feature": false,
+    "earliest_bad_frame": null,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 1,
+    "payload_address_values": [
+      0,
+      1,
+      0,
+      0
+    ],
+    "initializer_kind": "zero then fixed write"
+  },
+  {
+    "case": "dense_bv2_array8_addr0_safe",
+    "model": "payload_models/dense_bv2_array8_addr0_safe.btor2",
+    "expected": "UNSAT",
+    "optional_feature": false,
+    "earliest_bad_frame": null,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 8,
+    "payload_address_values": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "initializer_kind": "zero then fixed write"
+  },
+  {
+    "case": "dense_bv2_array8_addr1_safe",
+    "model": "payload_models/dense_bv2_array8_addr1_safe.btor2",
+    "expected": "UNSAT",
+    "optional_feature": false,
+    "earliest_bad_frame": null,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 8,
+    "payload_address_values": [
+      0,
+      1,
+      0,
+      0
+    ],
+    "initializer_kind": "zero then fixed write"
+  },
+  {
+    "case": "uniform_bv2_array1_one_safe",
+    "model": "payload_models/uniform_bv2_array1_one_safe.btor2",
+    "expected": "UNSAT",
+    "optional_feature": false,
+    "earliest_bad_frame": null,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 1,
+    "payload_address_values": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "initializer_kind": "element-width broadcast"
+  },
+  {
+    "case": "uniform_bv2_array8_one_safe",
+    "model": "payload_models/uniform_bv2_array8_one_safe.btor2",
+    "expected": "UNSAT",
+    "optional_feature": false,
+    "earliest_bad_frame": null,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 8,
+    "payload_address_values": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "initializer_kind": "element-width broadcast"
+  },
+  {
+    "case": "dense_bv1_array1_addr0_unsafe",
+    "model": "payload_models/dense_bv1_array1_addr0_unsafe.btor2",
+    "expected": "SAT",
+    "optional_feature": false,
+    "earliest_bad_frame": 1,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 1,
+    "payload_element_bits": 1,
+    "payload_address_values": [
+      1,
+      0
+    ],
+    "initializer_kind": "zero then fixed write"
+  },
+  {
+    "case": "dense_bv2_array1_addr0_unsafe",
+    "model": "payload_models/dense_bv2_array1_addr0_unsafe.btor2",
+    "expected": "SAT",
+    "optional_feature": false,
+    "earliest_bad_frame": 1,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 1,
+    "payload_address_values": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "initializer_kind": "zero then fixed write"
+  },
+  {
+    "case": "dense_bv2_array1_addr1_unsafe",
+    "model": "payload_models/dense_bv2_array1_addr1_unsafe.btor2",
+    "expected": "SAT",
+    "optional_feature": false,
+    "earliest_bad_frame": 1,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 1,
+    "payload_address_values": [
+      0,
+      1,
+      0,
+      0
+    ],
+    "initializer_kind": "zero then fixed write"
+  },
+  {
+    "case": "dense_bv2_array8_addr0_unsafe",
+    "model": "payload_models/dense_bv2_array8_addr0_unsafe.btor2",
+    "expected": "SAT",
+    "optional_feature": false,
+    "earliest_bad_frame": 1,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 8,
+    "payload_address_values": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "initializer_kind": "zero then fixed write"
+  },
+  {
+    "case": "dense_bv2_array8_addr1_unsafe",
+    "model": "payload_models/dense_bv2_array8_addr1_unsafe.btor2",
+    "expected": "SAT",
+    "optional_feature": false,
+    "earliest_bad_frame": 1,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 8,
+    "payload_address_values": [
+      0,
+      1,
+      0,
+      0
+    ],
+    "initializer_kind": "zero then fixed write"
+  },
+  {
+    "case": "uniform_bv2_array1_one_unsafe",
+    "model": "payload_models/uniform_bv2_array1_one_unsafe.btor2",
+    "expected": "SAT",
+    "optional_feature": false,
+    "earliest_bad_frame": 0,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 1,
+    "payload_address_values": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "initializer_kind": "element-width broadcast"
+  },
+  {
+    "case": "uniform_bv2_array8_one_unsafe",
+    "model": "payload_models/uniform_bv2_array8_one_unsafe.btor2",
+    "expected": "SAT",
+    "optional_feature": false,
+    "earliest_bad_frame": 0,
+    "reason": "Every fixed and symbolic read checks all elements, including high-address zeros.",
+    "payload_index_bits": 2,
+    "payload_element_bits": 8,
+    "payload_address_values": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "initializer_kind": "element-width broadcast"
+  }
+]

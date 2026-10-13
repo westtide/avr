@@ -1,0 +1,24 @@
+; AVR Array1 sort regression: array_bv8_control_safe
+1 sort bitvec 1
+2 sort bitvec 2
+3 sort bitvec 8
+4 sort array 2 3
+5 zero 3
+6 one 3
+7 zero 2
+8 one 2
+9 constd 3 165
+10 state 4 flags
+11 init 4 10 5
+12 write 4 10 7 9
+13 next 4 10 12
+14 zero 1
+15 one 1
+16 state 1 valid_previous_write
+17 init 1 16 14
+18 next 1 16 15
+19 read 3 10 7
+20 eq 1 19 9
+21 not 1 20
+22 and 1 16 21
+23 bad 22 property

@@ -642,7 +642,7 @@ unsigned Reach::dump_dot(int mode, ostream& fout, Inst* top, int depth, bool all
 	bool filled = false;
   bool addVal = false;
 	if (mode == 2) {
-	  if (top->get_size() == 1) {
+	  if (top->is_boolean()) {
 	    if (top->get_bval() == 1)
 	      filled = true;
 	    else if (top->get_bval() == 0)
@@ -1392,7 +1392,7 @@ bool is_trivially_feasible(Inst* e) {
 			me = *(ch->begin());
 		}
 	}
-	if (me->get_type() == Sig && me->get_size() == 1)
+	if (me->get_type() == Sig && me->is_boolean())
 		return true;
 	if (me->get_type() == Op) {
 		OpInst* op = OpInst::as(me);
@@ -1405,7 +1405,7 @@ bool is_trivially_feasible(Inst* e) {
 			cit2++;
 
 			// I am a constraint of the form A=false or A=true.
-			if ((*cit)->get_size() == 1)
+			if ((*cit)->is_boolean())
 				return true;
 
 			if ((*cit)->get_type() == Num && (*cit2)->get_type() == Num) {
@@ -3436,7 +3436,7 @@ void Reach::expand_avr1_style(InstL& viol)
 						Inst* inst_lhs = pi_it1->first;
 						Inst* inst_rhs = pi_it2->first;
 						bool eq;
-						if (inst_lhs->get_size() == 1)
+						if (inst_lhs->is_boolean())
 							eq = (inst_lhs->get_bval() == inst_rhs->get_bval());
 						else
 							eq = (*inst_lhs->get_ival() == *inst_rhs->get_ival());
@@ -3455,7 +3455,7 @@ void Reach::expand_avr1_style(InstL& viol)
 						Inst* inst_lhs = pi_it1->first;
 						Inst* inst_rhs = pi_it2->first;
 						bool eq;
-						if (inst_lhs->get_size() == 1)
+						if (inst_lhs->is_boolean())
 							eq = (inst_lhs->get_bval() == inst_rhs->get_bval());
 						else
 							eq = (*inst_lhs->get_ival() == *inst_rhs->get_ival());
@@ -3471,7 +3471,7 @@ void Reach::expand_avr1_style(InstL& viol)
 						}
 						inst_lhs = pi_it1->second;
 						inst_rhs = pi_it2->second;
-						if (inst_lhs->get_size() == 1)
+						if (inst_lhs->is_boolean())
 							eq = (inst_lhs->get_bval() == inst_rhs->get_bval());
 						else
 							eq = (inst_lhs->get_ival() == inst_rhs->get_ival());
@@ -3988,7 +3988,7 @@ void Reach::functional_consistency_analysis(InstS &result, map<string, InstL>& f
 // 						}else
 						{
 							bool eq;
-							if (ch_rhs->get_size() == 1)
+							if (ch_rhs->is_boolean())
 								eq = (ch_rhs->get_bval() == ch_lhs->get_bval());
 							else
 								eq = (*ch_rhs->get_ival() == *ch_lhs->get_ival());
@@ -4187,7 +4187,7 @@ Inst* Reach::lookup_func_list(list<InstsPair>& pairs_equiv_chs, list<InstsPair>&
 #endif
 
 						bool eq;
-						if (ch_top->get_size() == 1)
+						if (ch_top->is_boolean())
 							eq = (ch_top->get_bval() == ch_app->get_bval());
 						else
 							eq = (*ch_top->get_ival() == *ch_app->get_ival());
@@ -6483,7 +6483,7 @@ bool Reach::node_count(Inst *top, bool init_visit) {
 	}
 	top->set_visit();
 	_node_cnt++;
-	if (top->get_size() == 1) {
+	if (top->is_boolean()) {
 		_bool_node_cnt++;
 	} else {
 		_int_node_cnt++;
@@ -6525,7 +6525,7 @@ bool Reach::node_count(Inst *top, bool init_visit) {
 
 			for(auto& child: *(op->get_children()))
 			{
-				if (child->get_size() != 1)
+				if (!child->is_boolean())
 				{
 					oss << "_int";
 					break;
@@ -7991,7 +7991,7 @@ void Reach::print_module_as_blif(ostream& out, Trans*top) {
 				continue;
 			}
 			out << ".inputs";
-			if (sig->get_size() == 1)
+			if (sig->is_boolean())
 				out << " " << sig->get_name() << endl;
 			else {
 				for (size_t i = 0; i < sig->get_size(); i++) {
@@ -8284,9 +8284,9 @@ int Reach::write_blif_file() {
 			Inst * ve_lhs = *cit;
 			Inst * ve_rhs = *cit2;
 
-			if(ve_lhs->get_size() == 1){
+			if(ve_lhs->is_boolean()){
 				cout << *ve_lhs << " = " << *ve_rhs << endl;
-				assert(ve_lhs->get_size() != 1);
+				assert(!ve_lhs->is_boolean());
 			}
 			
 // 			if(ve_lhs->get_size() == 1){
@@ -8371,7 +8371,7 @@ int Reach::write_blif_file() {
 		}else{
 			reg_stats[lhs->get_size()]++;
 		}
-		if(lhs->get_size() == 1){
+		if(lhs->is_boolean()){
 			num_bits++;
 			num_total_bits++;
 		}else{
@@ -8405,7 +8405,7 @@ int Reach::write_blif_file() {
 		Inst *ve_lhs = *it;
 		Inst *t_ve;
 		
-		if(ve_lhs->get_size() == 1){
+		if(ve_lhs->is_boolean()){
 			t_ve = OpInst::create(OpInst::LogNot, ve_lhs);
 		}else{
 			t_ve = OpInst::create(OpInst::Eq, ve_lhs, NumInst::create(0, ve_lhs->get_size()));
@@ -8461,7 +8461,7 @@ int Reach::write_blif_file() {
 			}else{
 				Inst * ve_lhs;
 				Inst * ve_rhs;
-				assert(tve->get_size() == 1);
+				assert(tve->is_boolean());
 				OpInst *t_and_op = OpInst::as(tve);
 				if (t_and_op && t_and_op->get_op() == OpInst::LogNot){	// !q
 					ve_lhs = t_and_op->get_children()->front();
@@ -8492,7 +8492,7 @@ int Reach::write_blif_file() {
 		}else{
 			Inst * ve_lhs;
 			Inst * ve_rhs;
-			assert(tve->get_size() == 1);
+			assert(tve->is_boolean());
 			OpInst *t_and_op = OpInst::as(tve);
 			if (t_and_op && t_and_op->get_op() == OpInst::LogNot){	// !q
 				ve_lhs = t_and_op->get_children()->front();

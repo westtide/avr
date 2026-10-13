@@ -47,6 +47,16 @@
 	#include "yices.h"
 //	#include "/home/rock/ws/version/github/aman_goel/yices2/src/include/yices.h"
 #endif
+// yices2 >= 2.7 renames status enums to YICES_STATUS_*; keep legacy names
+#ifndef STATUS_IDLE
+#define STATUS_IDLE YICES_STATUS_IDLE
+#define STATUS_SEARCHING YICES_STATUS_SEARCHING
+#define STATUS_UNKNOWN YICES_STATUS_UNKNOWN
+#define STATUS_SAT YICES_STATUS_SAT
+#define STATUS_UNSAT YICES_STATUS_UNSAT
+#define STATUS_INTERRUPTED YICES_STATUS_INTERRUPTED
+#define STATUS_ERROR YICES_STATUS_ERROR
+#endif
 //	#include "yices.h"
 	}
 #endif

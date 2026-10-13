@@ -25,6 +25,8 @@
 #include <csignal>
 #include <pthread.h>
 #include <functional>
+#include <limits>
+#include <stdexcept>
 
 using namespace std;
 
@@ -847,8 +849,7 @@ bool bt_API::get_relation(Inst* lhs, Inst* rhs, bool expected) {
 }
 
 bool bt_API::get_assignment(Inst* e, int& val) {
-	assert(e->get_sort_type() == bvtype);
-	assert(e->get_size() == 1);
+	assert(e->is_boolean());
 
 	val = INVALID_SVAL;
 	bt_expr decl = e->bt_node.solv_var(get_vIdx());
@@ -999,26 +1000,49 @@ void bt_API::get_value_arr(bool abstract, SORT& sort, bt_expr_ptr decl, string& 
 	assert(sort.type == arraytype);
 	assert(sort.args.size() == 2);
 
+	SORT& d = sort.args.front();
+	SORT& r = sort.args.back();
+	unsigned elements = 0;
+	if (!abstract && d.type == bvtype && r.type == bvtype) {
+		if (d.sz == 0 || r.sz == 0 || d.sz >= numeric_limits<unsigned>::digits)
+			throw runtime_error("AVR backend unsupported: dense array model payload width");
+		elements = 1u << d.sz;
+		const unsigned maxPayload = static_cast<unsigned>(numeric_limits<int>::max());
+		if (r.sz > maxPayload / elements)
+			throw runtime_error("AVR backend unsupported: dense array model payload exceeds supported width");
+	}
+
   char **indices;
   char **values;
   uint32_t size;
 	boolector_array_assignment (g_ctx, decl, &indices, &values, &size);
 
-  SORT& d = sort.args.front();
-  SORT& r = sort.args.back();
-
-  string defstr = "";
+	// Boolector's model API uses zero at unlisted addresses and reports a
+	// constant array's default with index '*'. Keep one value per address.
+	string defstr(r.sz, '0');
+	bool malformed = false;
 	map < string, string > vMap;
-	for (int i = 0; i < size; i++) {
+	for (uint32_t i = 0; i < size; i++) {
 		string addrstr = (indices)[i];
 		string valstr = (values)[i];
-		vMap[addrstr] = valstr;
+		if (valstr.size() != r.sz || valstr.find_first_not_of("01") != string::npos) {
+			malformed = true;
+			continue;
+		}
+		if (addrstr == "*")
+			defstr = valstr;
+		else if (addrstr.size() != d.sz || addrstr.find_first_not_of("01") != string::npos)
+			malformed = true;
+		else
+			vMap[addrstr] = valstr;
 	}
 //	for (int i = 0; i < size; i++) {
 //		boolector_free_bv_assignment(g_ctx, (indices)[i]);
 //		boolector_free_bv_assignment(g_ctx, (values)[i]);
 //	}
 	boolector_free_array_assignment(g_ctx, indices, values, size);
+	if (malformed)
+		throw runtime_error("AVR backend error: malformed binary array model value");
 
 //	cout << sort.sort2str() << "\tdef: " << defstr << endl;
 //  for (auto& v: vMap)
@@ -1027,7 +1051,8 @@ void bt_API::get_value_arr(bool abstract, SORT& sort, bt_expr_ptr decl, string& 
 //  if (false && !abstract && d.type == bvtype) {
   if (!abstract && d.type == bvtype && r.type == bvtype) {
     sval = "";
-    for (int i = pow(2, d.sz) - 1; i >= 0; i--) {
+		for (unsigned remaining = elements; remaining > 0; --remaining) {
+			unsigned i = remaining - 1;
     	map < string, string >::iterator mit = vMap.find(val_to_str(i, d.sz, false));
     	if (mit != vMap.end())
     		sval += (*mit).second;
@@ -1045,7 +1070,7 @@ void bt_API::get_value_arr(bool abstract, SORT& sort, bt_expr_ptr decl, string& 
 
 
 bool bt_API::get_assignment(Inst* e, mpz_class* val) {
-  assert(e->get_size() != 1);
+  assert(!e->is_boolean());
 
   bt_expr decl = e->bt_node.solv_var(get_vIdx());
   if (decl == BT_INVALID_EXPR) {
@@ -1782,10 +1807,10 @@ void bt_API::inst2yices(Inst*e, bool bvAllConstraints) {
 		it2++;
 		OpInst::OpType o = op->get_op();
 
-		if (o == OpInst::BitWiseXor && op->get_size() == 1 && (m_mapper->fetch_op(e) != TheoryMapper::BV_OP)) {
+		if (o == OpInst::BitWiseXor && op->is_boolean() && (m_mapper->fetch_op(e) != TheoryMapper::BV_OP)) {
 			o = OpInst::LogXor;
 		}
-		if (o == OpInst::BitWiseXNor && op->get_size() == 1 && (m_mapper->fetch_op(e) != TheoryMapper::BV_OP)) {
+		if (o == OpInst::BitWiseXNor && op->is_boolean() && (m_mapper->fetch_op(e) != TheoryMapper::BV_OP)) {
 			o = OpInst::LogXNor;
 		}
 
@@ -1882,17 +1907,24 @@ void bt_API::inst2yices(Inst*e, bool bvAllConstraints) {
 					SORT* r = e->get_sort_range();
 					assert(d->type == bvtype);
 					assert(r->type == bvtype);
-					int width = d->sz;
-					int size = r->sz;
+					unsigned width = d->sz;
+					unsigned size = r->sz;
+					if (width == 0 || size == 0 || width >= numeric_limits<unsigned>::digits)
+						throw runtime_error("AVR backend unsupported: dense array initializer domain width");
+					const unsigned elements = 1u << width;
+					const unsigned maxPayload = static_cast<unsigned>(numeric_limits<int>::max());
+					if (size > maxPayload / elements)
+						throw runtime_error("AVR backend unsupported: dense array initializer exceeds supported width");
 
 					Inst* init_val = e->get_children()->back();
 					assert(init_val->get_type() == Num);
 					string value = NumInst::as(init_val)->get_mpz()->get_str(2);
-					while (value.length() < e->get_size())
-						value = "0" + value;
-					int maxaddress = pow(2, width) - 1;
+					// Restore the declared initializer width: element values broadcast,
+					// while complete payloads retain zero-valued high addresses.
+					if (value.length() < init_val->get_size())
+						value.insert(0, init_val->get_size() - value.length(), '0');
 					bool initialized = false;
-					for (int i = 0; i <= maxaddress; i++) {
+					for (unsigned i = 0; i < elements; ++i) {
 						string v;
 						if (value.size() <= size) {
 							v = value;
@@ -1901,7 +1933,7 @@ void bt_API::inst2yices(Inst*e, bool bvAllConstraints) {
 						} else {
 							v = "0";
 						}
-						Inst* address = NumInst::create(maxaddress - i, width, SORT());
+						Inst* address = NumInst::create(elements - 1 - i, width, SORT());
 						Inst* data = NumInst::create(v, size, 2, SORT());
 						bt_expr_ptr b = create_bt_number(NumInst::as(data));
 						if (i == 0) {
@@ -2636,7 +2668,7 @@ void bt_API::inst2yices(Inst*e, bool bvAllConstraints) {
 					cout << OpInst::op2str(o) << endl;
 					assert(0);
 				}
-				add_yices_func(yvar, opstr, e->get_size() == 1, y_ch, s_sz, e);
+				add_yices_func(yvar, opstr, e->is_boolean(), y_ch, s_sz, e);
 			}
 		} else {
 			assert(0);
@@ -2661,7 +2693,7 @@ void bt_API::inst2yices(Inst*e, bool bvAllConstraints) {
 			s_sz.push_back(ex->get_hi());
 			s_sz.push_back(ex->get_lo());
 			s_sz.push_back((*(ch->begin()))->get_size());
-			add_yices_func(yvar, "Extract", e->get_size() == 1, y_ch, s_sz, e);
+			add_yices_func(yvar, "Extract", e->is_boolean(), y_ch, s_sz, e);
 		} else
 			assert(0);
 	}
@@ -2671,7 +2703,7 @@ void bt_API::inst2yices(Inst*e, bool bvAllConstraints) {
 		assert(uf != 0);
 		assert(ch != 0);
 		assert(ch->size() > 0);
-		add_yices_func(yvar, clean_str(uf->get_name()), e->get_size() == 1, y_ch, s_sz, e);
+			add_yices_func(yvar, clean_str(uf->get_name()), e->is_boolean(), y_ch, s_sz, e);
 	}
 		break;
 	case Mem:
